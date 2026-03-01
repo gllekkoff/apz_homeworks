@@ -1,1 +1,1 @@
-# apz_homeworks
+# HazelCast homework

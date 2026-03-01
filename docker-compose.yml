@@ -1,0 +1,42 @@
+services:
+  hz1:
+    image: hazelcast/hazelcast:5.3
+    container_name: hz1
+    environment:
+      - HZ_CLUSTERNAME=dev
+      - JAVA_OPTS=-Dhazelcast.config=/opt/hazelcast/config/hazelcast.yml
+    volumes:
+      - ./hazelcast.yml:/opt/hazelcast/config/hazelcast.yml
+    ports:
+      - "5701:5701"
+
+  hz2:
+    image: hazelcast/hazelcast:5.3
+    container_name: hz2
+    environment:
+      - HZ_CLUSTERNAME=dev
+      - JAVA_OPTS=-Dhazelcast.config=/opt/hazelcast/config/hazelcast.yml
+    volumes:
+      - ./hazelcast.yml:/opt/hazelcast/config/hazelcast.yml
+    ports:
+      - "5702:5701"
+
+  hz3:
+    image: hazelcast/hazelcast:5.3
+    container_name: hz3
+    environment:
+      - HZ_CLUSTERNAME=dev
+      - JAVA_OPTS=-Dhazelcast.config=/opt/hazelcast/config/hazelcast.yml
+    volumes:
+      - ./hazelcast.yml:/opt/hazelcast/config/hazelcast.yml
+    ports:
+      - "5703:5701"
+
+  management-center:
+    image: hazelcast/management-center:5.3
+    container_name: hz-mc
+    ports:
+      - "8080:8080"
+    environment:
+      - MC_DEFAULT_CLUSTER_MEMBERS=hz1:5701,hz2:5701,hz3:5701
+      - MC_DEFAULT_CLUSTER_NAME=dev
