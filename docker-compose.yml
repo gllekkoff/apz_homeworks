@@ -1,27 +1,151 @@
 services:
-  logging-service:
-    build: ./logging-service
-    ports:
-      - "8081:8081"
+
+  # hazelcast cluster
+  hazelcast1:
+    image: hazelcast/hazelcast:5.3
+    environment:
+      HAZELCAST_CONFIG: /opt/hazelcast/config/hazelcast.yaml
+    volumes:
+      - ./hazelcast/hazelcast.yaml:/opt/hazelcast/config/hazelcast.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5701/hazelcast/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     networks:
       - banking
 
+  hazelcast2:
+    image: hazelcast/hazelcast:5.3
+    environment:
+      HAZELCAST_CONFIG: /opt/hazelcast/config/hazelcast.yaml
+    volumes:
+      - ./hazelcast/hazelcast.yaml:/opt/hazelcast/config/hazelcast.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5701/hazelcast/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - banking
+
+  hazelcast3:
+    image: hazelcast/hazelcast:5.3
+    environment:
+      HAZELCAST_CONFIG: /opt/hazelcast/config/hazelcast.yaml
+    volumes:
+      - ./hazelcast/hazelcast.yaml:/opt/hazelcast/config/hazelcast.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5701/hazelcast/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - banking
+
+  # postgres
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: banking
+      POSTGRES_USER: banking_user
+      POSTGRES_PASSWORD: banking_pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U banking_user -d banking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - banking
+
+  # logging-service (3 instances)
+  logging-service1:
+    build: ./logging-service
+    ports:
+      - "8081:8081"
+    environment:
+      INSTANCE_NAME: logging-service1
+      HAZELCAST_NODES: hazelcast1:5701,hazelcast2:5701,hazelcast3:5701
+    depends_on:
+      hazelcast1:
+        condition: service_healthy
+      hazelcast2:
+        condition: service_healthy
+      hazelcast3:
+        condition: service_healthy
+    networks:
+      - banking
+
+  logging-service2:
+    build: ./logging-service
+    ports:
+      - "8083:8081"
+    environment:
+      INSTANCE_NAME: logging-service2
+      HAZELCAST_NODES: hazelcast1:5701,hazelcast2:5701,hazelcast3:5701
+    depends_on:
+      hazelcast1:
+        condition: service_healthy
+      hazelcast2:
+        condition: service_healthy
+      hazelcast3:
+        condition: service_healthy
+    networks:
+      - banking
+
+  logging-service3:
+    build: ./logging-service
+    ports:
+      - "8084:8081"
+    environment:
+      INSTANCE_NAME: logging-service3
+      HAZELCAST_NODES: hazelcast1:5701,hazelcast2:5701,hazelcast3:5701
+    depends_on:
+      hazelcast1:
+        condition: service_healthy
+      hazelcast2:
+        condition: service_healthy
+      hazelcast3:
+        condition: service_healthy
+    networks:
+      - banking
+
+  # counter-service
   counter-service:
     build: ./counter-service
     ports:
       - "8082:8082"
+    environment:
+      DATABASE_URL: postgresql://banking_user:banking_pass@postgres:5432/banking
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - banking
 
+  # facade-service
   facade-service:
     build: ./facade-service
     ports:
       - "8080:8080"
+    environment:
+      LOGGING_SERVICE_URLS: http://logging-service1:8081,http://logging-service2:8081,http://logging-service3:8081
+      COUNTER_SERVICE_URL: http://counter-service:8082
     depends_on:
-      - logging-service
+      - logging-service1
+      - logging-service2
+      - logging-service3
       - counter-service
     networks:
       - banking
+
+volumes:
+  pgdata:
 
 networks:
   banking:

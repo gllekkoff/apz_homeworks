@@ -1,0 +1,17 @@
+hazelcast:
+  cluster-name: dev
+  network:
+    join:
+      multicast:
+        enabled: false
+      tcp-ip:
+        enabled: true
+        member-list:
+          - hazelcast1
+          - hazelcast2
+          - hazelcast3
+    rest-api:
+      enabled: true
+      endpoint-groups:
+        HEALTH_CHECK:
+          enabled: true
