@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+
+  # ---------- Hazelcast cluster ----------
+  hazelcast1:
+    image: hazelcast/hazelcast:5.5
+    container_name: hazelcast1
+    environment:
+      - HZ_CLUSTERNAME=dev
+    volumes:
+      - ./hazelcast/hazelcast.xml:/opt/hazelcast/config/hazelcast.xml
+    networks:
+      - apz-net
+
+  hazelcast2:
+    image: hazelcast/hazelcast:5.5
+    container_name: hazelcast2
+    environment:
+      - HZ_CLUSTERNAME=dev
+    volumes:
+      - ./hazelcast/hazelcast.xml:/opt/hazelcast/config/hazelcast.xml
+    networks:
+      - apz-net
+
+  hazelcast3:
+    image: hazelcast/hazelcast:5.5
+    container_name: hazelcast3
+    environment:
+      - HZ_CLUSTERNAME=dev
+    volumes:
+      - ./hazelcast/hazelcast.xml:/opt/hazelcast/config/hazelcast.xml
+    networks:
+      - apz-net
+
+  # ---------- Config server ----------
+  config-server:
+    build: ./config-server
+    container_name: config-server
+    ports:
+      - "8000:8000"
+    networks:
+      - apz-net
+
+  # ---------- Logging services ----------
+  logging-service-1:
+    build: ./logging-service
+    container_name: logging-service-1
+    environment:
+      - PORT=8001
+      - MY_HOST=logging-service-1
+      - INSTANCE_ID=1
+      - CONFIG_SERVER=http://config-server:8000
+    ports:
+      - "8011:8001"
+    depends_on:
+      - config-server
+    networks:
+      - apz-net
+
+  logging-service-2:
+    build: ./logging-service
+    container_name: logging-service-2
+    environment:
+      - PORT=8001
+      - MY_HOST=logging-service-2
+      - INSTANCE_ID=2
+      - CONFIG_SERVER=http://config-server:8000
+    ports:
+      - "8012:8001"
+    depends_on:
+      - config-server
+    networks:
+      - apz-net
+
+  logging-service-3:
+    build: ./logging-service
+    container_name: logging-service-3
+    environment:
+      - PORT=8001
+      - MY_HOST=logging-service-3
+      - INSTANCE_ID=3
+      - CONFIG_SERVER=http://config-server:8000
+    ports:
+      - "8013:8001"
+    depends_on:
+      - config-server
+    networks:
+      - apz-net
+
+  # ---------- Counter service ----------
+  counter-service:
+    build: ./counter-service
+    container_name: counter-service
+    environment:
+      - PORT=8002
+      - MY_HOST=counter-service
+      - CONFIG_SERVER=http://config-server:8000
+      - HZ_MEMBERS=hazelcast1:5701,hazelcast2:5701,hazelcast3:5701
+    ports:
+      - "8002:8002"
+    depends_on:
+      - config-server
+      - hazelcast1
+      - hazelcast2
+      - hazelcast3
+    networks:
+      - apz-net
+
+  # ---------- Facade service ----------
+  facade-service:
+    build: ./facade-service
+    container_name: facade-service
+    environment:
+      - PORT=8080
+      - MY_HOST=facade-service
+      - CONFIG_SERVER=http://config-server:8000
+      - HZ_MEMBERS=hazelcast1:5701,hazelcast2:5701,hazelcast3:5701
+    ports:
+      - "8080:8080"
+    depends_on:
+      - config-server
+      - hazelcast1
+      - hazelcast2
+      - hazelcast3
+    networks:
+      - apz-net
+
+networks:
+  apz-net:
+    driver: bridge
