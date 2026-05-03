@@ -1,0 +1,219 @@
+services:
+  consul:
+    image: hashicorp/consul:1.20
+    container_name: consul
+    command: agent -dev -client=0.0.0.0 -ui
+    ports:
+      - "8500:8500"
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - apz-net
+
+  consul-init:
+    image: curlimages/curl:8.10.1
+    container_name: consul-init
+    depends_on:
+      consul:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        curl -fsS -X PUT --data 'hazelcast1:5701,hazelcast2:5701,hazelcast3:5701' http://consul:8500/v1/kv/config/hazelcast/members
+        curl -fsS -X PUT --data 'hazelcast1:5701,hazelcast2:5701,hazelcast3:5701' http://consul:8500/v1/kv/config/message-queue/hazelcast-members
+        curl -fsS -X PUT --data 'counter-queue' http://consul:8500/v1/kv/config/message-queue/name
+    networks:
+      - apz-net
+
+  hazelcast1:
+    image: hazelcast/hazelcast:5.5
+    container_name: hazelcast1
+    environment:
+      - HZ_CLUSTERNAME=dev
+    volumes:
+      - ./hazelcast/hazelcast.xml:/opt/hazelcast/config/hazelcast.xml
+    networks:
+      - apz-net
+
+  hazelcast2:
+    image: hazelcast/hazelcast:5.5
+    container_name: hazelcast2
+    environment:
+      - HZ_CLUSTERNAME=dev
+    volumes:
+      - ./hazelcast/hazelcast.xml:/opt/hazelcast/config/hazelcast.xml
+    networks:
+      - apz-net
+
+  hazelcast3:
+    image: hazelcast/hazelcast:5.5
+    container_name: hazelcast3
+    environment:
+      - HZ_CLUSTERNAME=dev
+    volumes:
+      - ./hazelcast/hazelcast.xml:/opt/hazelcast/config/hazelcast.xml
+    networks:
+      - apz-net
+
+  logging-service-1:
+    build: ./logging-service
+    container_name: logging-service-1
+    environment:
+      - PORT=8001
+      - MY_HOST=logging-service-1
+      - INSTANCE_ID=1
+      - CONSUL_HTTP_ADDR=http://consul:8500
+    ports:
+      - "8011:8001"
+    depends_on:
+      consul-init:
+        condition: service_completed_successfully
+      hazelcast1:
+        condition: service_started
+      hazelcast2:
+        condition: service_started
+      hazelcast3:
+        condition: service_started
+    networks:
+      - apz-net
+
+  logging-service-2:
+    build: ./logging-service
+    container_name: logging-service-2
+    environment:
+      - PORT=8001
+      - MY_HOST=logging-service-2
+      - INSTANCE_ID=2
+      - CONSUL_HTTP_ADDR=http://consul:8500
+    ports:
+      - "8012:8001"
+    depends_on:
+      consul-init:
+        condition: service_completed_successfully
+      hazelcast1:
+        condition: service_started
+      hazelcast2:
+        condition: service_started
+      hazelcast3:
+        condition: service_started
+    networks:
+      - apz-net
+
+  logging-service-3:
+    build: ./logging-service
+    container_name: logging-service-3
+    environment:
+      - PORT=8001
+      - MY_HOST=logging-service-3
+      - INSTANCE_ID=3
+      - CONSUL_HTTP_ADDR=http://consul:8500
+    ports:
+      - "8013:8001"
+    depends_on:
+      consul-init:
+        condition: service_completed_successfully
+      hazelcast1:
+        condition: service_started
+      hazelcast2:
+        condition: service_started
+      hazelcast3:
+        condition: service_started
+    networks:
+      - apz-net
+
+  counter-service-1:
+    build: ./counter-service
+    container_name: counter-service-1
+    environment:
+      - PORT=8002
+      - MY_HOST=counter-service-1
+      - INSTANCE_ID=1
+      - CONSUL_HTTP_ADDR=http://consul:8500
+    ports:
+      - "8002:8002"
+    depends_on:
+      consul-init:
+        condition: service_completed_successfully
+      hazelcast1:
+        condition: service_started
+      hazelcast2:
+        condition: service_started
+      hazelcast3:
+        condition: service_started
+    networks:
+      - apz-net
+
+  counter-service-2:
+    build: ./counter-service
+    container_name: counter-service-2
+    environment:
+      - PORT=8002
+      - MY_HOST=counter-service-2
+      - INSTANCE_ID=2
+      - CONSUL_HTTP_ADDR=http://consul:8500
+    ports:
+      - "8003:8002"
+    depends_on:
+      consul-init:
+        condition: service_completed_successfully
+      hazelcast1:
+        condition: service_started
+      hazelcast2:
+        condition: service_started
+      hazelcast3:
+        condition: service_started
+    networks:
+      - apz-net
+
+  facade-service-1:
+    build: ./facade-service
+    container_name: facade-service-1
+    environment:
+      - PORT=8080
+      - MY_HOST=facade-service-1
+      - INSTANCE_ID=1
+      - CONSUL_HTTP_ADDR=http://consul:8500
+    ports:
+      - "8080:8080"
+    depends_on:
+      consul-init:
+        condition: service_completed_successfully
+      hazelcast1:
+        condition: service_started
+      hazelcast2:
+        condition: service_started
+      hazelcast3:
+        condition: service_started
+    networks:
+      - apz-net
+
+  facade-service-2:
+    build: ./facade-service
+    container_name: facade-service-2
+    environment:
+      - PORT=8080
+      - MY_HOST=facade-service-2
+      - INSTANCE_ID=2
+      - CONSUL_HTTP_ADDR=http://consul:8500
+    ports:
+      - "8081:8080"
+    depends_on:
+      consul-init:
+        condition: service_completed_successfully
+      hazelcast1:
+        condition: service_started
+      hazelcast2:
+        condition: service_started
+      hazelcast3:
+        condition: service_started
+    networks:
+      - apz-net
+
+networks:
+  apz-net:
+    driver: bridge
